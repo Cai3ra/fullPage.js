@@ -1,5 +1,5 @@
 /*!
- * fullPage 3.0.3
+ * fullPage 3.0.4
  * https://github.com/alvarotrigo/fullPage.js
  *
  * @license GPLv3 for open source use only
@@ -223,6 +223,7 @@
         var keydownId;
         var originals = deepExtend({}, options); //deep copy
         var activeAnimation;
+        var g_initialAnchorsInDom = false;
 
         displayWarnings();
 
@@ -700,6 +701,7 @@
                 var attrName = '[data-anchor]';
                 var anchors = $(options.sectionSelector.split(',').join(attrName + ',') + attrName, container);
                 if(anchors.length){
+                    g_initialAnchorsInDom = true;
                     anchors.forEach(function(item){
                         options.anchors.push(item.getAttribute('data-anchor').toString());
                     });
@@ -3117,6 +3119,11 @@
                 if(previousStyles){
                     item.setAttribute('style', item.getAttribute('data-fp-styles'));
                 }
+
+                //removing anchors if they were not set using the HTML markup
+                if(hasClass(item, SECTION) && !g_initialAnchorsInDom){
+                    item.removeAttribute('data-anchor');
+                }
             });
 
             //removing the applied transition from the fullpage wrapper
@@ -3369,25 +3376,29 @@
     * Extends a given Object properties and its childs.
     */
     function deepExtend(out) {
-      out = out || {};
+        out = out || {};
+        for (var i = 1, len = arguments.length; i < len; ++i){
+            var obj = arguments[i];
 
-      for (var i = 1; i < arguments.length; i++) {
-        var obj = arguments[i];
+            if(!obj){
+              continue;
+            }
 
-        if (!obj)
-          continue;
+            for(var key in obj){
+              if (!obj.hasOwnProperty(key)){
+                continue;
+              }
 
-        for (var key in obj) {
-          if (obj.hasOwnProperty(key)) {
-            if (typeof obj[key] === 'object' && obj[key] != null)
-              out[key] = deepExtend(out[key], obj[key]);
-            else
+              // based on https://javascriptweblog.wordpress.com/2011/08/08/fixing-the-javascript-typeof-operator/
+              if (Object.prototype.toString.call(obj[key]) === '[object Object]'){
+                out[key] = deepExtend(out[key], obj[key]);
+                continue;
+              }
+
               out[key] = obj[key];
-          }
+            }
         }
-      }
-
-      return out;
+        return out;
     }
 
     /**
@@ -3911,7 +3922,8 @@ if(window.jQuery && window.fullpage){
         }
 
         $.fn.fullpage = function(options) {
-            var FP = new fullpage('#' + $(this).attr('id'), options);
+
+            var FP = new fullpage(this[0], options);
 
             //Static API
             Object.keys(FP).forEach(function (key) {
